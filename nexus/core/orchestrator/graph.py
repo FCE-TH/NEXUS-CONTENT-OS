@@ -47,24 +47,40 @@ def generate_node(state: NexusState) -> NexusState:
     
     # Si el workspace tiene módulo sports y el briefing es sobre deportes, usar LiveScore
     rag_context = ""
-    if ws and workspace_has_module(ws['workspace_id'], "sports_realtime"):
-        briefing_lower = state['briefing'].lower()
-        sports_keywords = ['partido', 'gol', 'madrid', 'barcelona', 'laliga', 'champions', 'resultado', 'baloncesto', 'tenis']
-        if any(k in briefing_lower for k in sports_keywords):
-            try:
-                from nexus.modules.sports.livescore import get_live_matches, get_laliga_matches
-                # Intentar partidos en vivo primero, fallback a LaLiga reciente
-                matches = get_live_matches() or get_laliga_matches()
-                if matches:
-                    # Convertir lista de dicts a texto legible para el LLM
-                    matches_text = "\n".join([
-                        f"• {m['home']} {m['score_home']}-{m['score_away']} {m['away']} ({m['league']})"
-                        for m in matches[:5]
-                    ])
-                    rag_context = f"## Últimos resultados/partidos en directo:\n{matches_text}"
-                    print(f"[GENERATE] ✓ Datos deportivos cargados via LiveScore ({len(matches)} partidos)")
-            except Exception as e:
-                print(f"[GENERATE] ⚠️ LiveScore no disponible: {e}")
+    briefing_lower = state['briefing'].lower()
+    sports_keywords = ['partido', 'gol', 'madrid', 'barcelona', 'laliga', 'champions', 'resultado', 'baloncesto', 'tenis', 'real', 'atletico']
+    
+    if ws:
+        print(f"[GENERATE] Workspace: {ws.get('name')} | Módulos: {ws.get('active_modules')}")
+        if workspace_has_module(ws['workspace_id'], "sports_realtime"):
+            print(f"[GENERATE] ✓ Sports realtime activo")
+            if any(k in briefing_lower for k in sports_keywords):
+                print(f"[GENERATE] Detectada tarea deportiva (keywords encontradas)")
+                try:
+                    from nexus.modules.sports.livescore import get_live_matches, get_laliga_matches
+                    print(f"[GENERATE] Intentando LiveScore...")
+                    # Intentar partidos en vivo primero, fallback a LaLiga reciente
+                    matches = get_live_matches() or get_laliga_matches()
+                    if matches:
+                        # Convertir lista de dicts a texto legible para el LLM
+                        matches_text = "\n".join([
+                            f"• {m['home']} {m['score_home']}-{m['score_away']} {m['away']} ({m['league']})"
+                            for m in matches[:5]
+                        ])
+                        rag_context = f"## Últimos resultados/partidos en directo:\n{matches_text}"
+                        print(f"[GENERATE] ✓ Datos deportivos cargados via LiveScore ({len(matches)} partidos)")
+                    else:
+                        print(f"[GENERATE] ⚠️ LiveScore no retornó partidos")
+                except Exception as e:
+                    print(f"[GENERATE] ⚠️ LiveScore error: {e}")
+                    import traceback
+                    traceback.print_exc()
+            else:
+                print(f"[GENERATE] Briefing no tiene palabras clave deportivas")
+        else:
+            print(f"[GENERATE] Sports realtime NO activo para este workspace")
+    else:
+        print(f"[GENERATE] ⚠️ Workspace no encontrado para {state.get('profile_id')}")
     
     result = generate_content(
         briefing=state["briefing"],
