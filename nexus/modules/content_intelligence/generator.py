@@ -19,6 +19,7 @@ def generate_content(
     profile_context: str = "",
     rag_context: str = "",
     system_prompt_override: str = "",
+    profile_id: str = "",
 ) -> dict:
     """
     Genera contenido usando el modelo óptimo según la tarea.
@@ -34,10 +35,22 @@ def generate_content(
     available_providers = ["anthropic"]
     model = route_task(task_type, available_providers)
     
+    # Inyectar feedback de mejores contenidos anteriores
+    feedback_context = ""
+    if profile_id:
+        try:
+            from nexus.core.feedback.tracker import get_top_performers, format_feedback_context
+            top = get_top_performers(profile_id=profile_id, limit=3)
+            feedback_context = format_feedback_context(top)
+        except Exception:
+            pass
+
     # Construir system prompt
     system = system_prompt_override or SYSTEM_PROMPT_BASE
     if profile_context:
         system += f"\n\n## Perfil de marca:\n{profile_context}"
+    if feedback_context:
+        system += f"\n\n## {feedback_context}"
     if rag_context:
         system += f"\n\n## Contexto relevante (producciones anteriores):\n{rag_context}"
 

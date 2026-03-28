@@ -40,7 +40,11 @@ def generate_node(state: NexusState) -> NexusState:
         print(f"[GENERATE] Perfil cargado: {profile.get('name')}")
 
     print(f"[GENERATE] Briefing: {state['briefing'][:60]}...")
-    result = generate_content(briefing=state["briefing"], profile_context=profile_context)
+    result = generate_content(
+        briefing=state["briefing"],
+        profile_context=profile_context,
+        profile_id=state.get("profile_id", ""),
+    )
     print(f"[GENERATE] Modelo: {result['model_used']} | Tarea: {result['task_type']} | Tokens: {result['output_tokens']}")
     state["generated_content"] = result["content"]
     return state

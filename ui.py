@@ -87,7 +87,36 @@ if "last_result" in st.session_state:
                 with col_b:
                     st.caption(f"{len(content)} caracteres")
 
+    # Feedback de métricas
     st.divider()
+    with st.expander("📊 Registrar métricas de rendimiento (cierra el bucle)"):
+        st.caption("Introduce los resultados reales de una publicación para que NEXUS aprenda")
+        fb_platform = st.selectbox("Plataforma", ["linkedin", "x", "instagram"])
+        col_v, col_l, col_s, col_c = st.columns(4)
+        fb_views = col_v.number_input("Views", min_value=0, value=0)
+        fb_likes = col_l.number_input("Likes", min_value=0, value=0)
+        fb_shares = col_s.number_input("Shares", min_value=0, value=0)
+        fb_clicks = col_c.number_input("Clicks", min_value=0, value=0)
+        fb_engagement = st.slider("Engagement rate", 0.0, 1.0, 0.05, 0.01)
+
+        if st.button("💾 Guardar métricas", type="secondary"):
+            from nexus.core.feedback.tracker import record_performance
+            import uuid
+            record_performance(
+                output_id=str(uuid.uuid4())[:8],
+                profile_id=r.get("profile_id", ""),
+                platform=fb_platform,
+                content=r.get("generated_content", ""),
+                briefing=r.get("briefing", ""),
+                content_type=clf.get("content_type", ""),
+                metrics={
+                    "views": fb_views, "likes": fb_likes,
+                    "shares": fb_shares, "clicks": fb_clicks,
+                    "engagement_rate": fb_engagement,
+                },
+            )
+            st.success("✓ Métricas guardadas — NEXUS aprenderá de este contenido")
+
     if st.button("🗑️ Limpiar y nueva producción"):
         del st.session_state["last_result"]
         st.rerun()
