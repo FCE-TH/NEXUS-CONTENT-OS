@@ -62,6 +62,17 @@ def save_profile(profile_id: str, profile_data: dict) -> bool:
     return True
 
 
+def list_profiles() -> list[str]:
+    """Lista todos los profile_ids disponibles en Qdrant."""
+    _ensure_collection()
+    results = client.scroll(
+        collection_name=COLLECTION_NAME,
+        with_payload=True,
+        limit=100,
+    )
+    return [r.payload.get("profile_id") for r in results[0] if r.payload.get("profile_id")]
+
+
 def get_profile(profile_id: str) -> dict | None:
     """Recupera un perfil de marca por ID."""
     _ensure_collection()

@@ -8,18 +8,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import streamlit as st
-from nexus.shared.storage import list_outputs, save_output
+from nexus.shared.storage import list_outputs
 from nexus.core.orchestrator.graph import nexus_graph
 
 st.set_page_config(page_title="NEXUS Content OS", page_icon="⚡", layout="wide")
 
 st.title("⚡ NEXUS Content OS")
-st.caption("Plataforma de producción de contenido multiformato asistida por IA")
+st.caption("Intake → Generate → Classify → Adapt → HITL → Distribute")
 
 # ── SIDEBAR ──────────────────────────────────────────────
 with st.sidebar:
     st.header("Nueva producción")
-    profile_id = st.text_input("Perfil", value="squirrel_os")
+    
+    from nexus.core.profiles.manager import list_profiles
+    available_profiles = list_profiles()
+    if not available_profiles:
+        available_profiles = ["squirrel_os"]
+    
+    profile_id = st.selectbox("Perfil de marca", options=available_profiles, index=0)
     operator = st.text_input("Operador", value="Felipe")
     briefing = st.text_area("Briefing", height=150,
         placeholder="Describe qué quieres generar, para quién y en qué tono...")
@@ -27,49 +33,73 @@ with st.sidebar:
 
 # ── GENERACIÓN ────────────────────────────────────────────
 if generate_btn and briefing:
-    with st.spinner("Generando contenido con Claude..."):
+    with st.spinner("Generando, clasificando y adaptando..."):
         result = nexus_graph.invoke({
             "briefing": briefing,
             "profile_id": profile_id,
             "operator": operator,
             "generated_content": None,
+            "classification": None,
+            "target_platforms": None,
+            "adapted_content": None,
             "human_approved": None,
             "published": False,
             "error": None,
         }, config={"configurable": {"thread_id": f"ui_{profile_id}_{len(briefing)}"}})
 
-    st.success("✓ Contenido generado")
     st.session_state["last_result"] = result
 
-# ── REVISIÓN DEL ÚLTIMO OUTPUT ────────────────────────────
+# ── RESULTADO ─────────────────────────────────────────────
 if "last_result" in st.session_state:
     r = st.session_state["last_result"]
-    st.subheader("Revisión — aprobación humana (HITL)")
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        content = st.text_area("Contenido generado", value=r["generated_content"], height=300)
-    with col2:
-        st.metric("Perfil", r["profile_id"])
-        st.metric("Publicado", "✓" if r["published"] else "Pendiente")
-        if st.button("✅ Aprobar y publicar", type="primary"):
-            st.success("Publicado ✓")
-            del st.session_state["last_result"]
-        if st.button("❌ Rechazar"):
-            st.warning("Rechazado")
-            del st.session_state["last_result"]
+    clf = r.get("classification") or {}
+
+    # Métricas de clasificación
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Tipo", clf.get("content_type", "-"))
+    col2.metric("Calidad", f"{clf.get('quality_score', '-')}/10")
+    col3.metric("Urgencia", clf.get("urgency", "-"))
+    col4.metric("Canales", len(r.get("target_platforms") or []))
+
+    if clf.get("quality_notes"):
+        st.info(f"💡 {clf['quality_notes']}")
+
+    st.divider()
+
+    # Contenido original
+    with st.expander("📝 Contenido original", expanded=False):
+        st.markdown(r.get("generated_content", ""))
+
+    # Adaptaciones por canal
+    adapted = r.get("adapted_content") or {}
+    if adapted:
+        st.subheader("Versiones por canal — Aprobación HITL")
+        platform_icons = {"linkedin": "💼", "x": "🐦", "instagram": "📸", "facebook": "📘", "youtube": "▶️"}
+
+        tabs = st.tabs([f"{platform_icons.get(p, '📢')} {p.upper()}" for p in adapted.keys()])
+        for tab, (platform, content) in zip(tabs, adapted.items()):
+            with tab:
+                edited = st.text_area(f"Contenido {platform}", value=content, height=250, key=f"edit_{platform}")
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    if st.button(f"✅ Aprobar {platform}", key=f"approve_{platform}", type="primary"):
+                        st.success(f"✓ {platform} aprobado para publicación")
+                with col_b:
+                    st.caption(f"{len(content)} caracteres")
+
+    st.divider()
+    if st.button("🗑️ Limpiar y nueva producción"):
+        del st.session_state["last_result"]
+        st.rerun()
 
 # ── HISTORIAL ─────────────────────────────────────────────
-st.divider()
 st.subheader("Historial de producciones")
-
-outputs = list_outputs(20)
+outputs = list_outputs(10)
 if not outputs:
-    st.info("No hay producciones todavía. Crea la primera desde el panel izquierdo.")
+    st.info("No hay producciones todavía.")
 else:
     for o in outputs:
         with st.expander(f"**{o['id']}** · {o['timestamp'][:19]} · {o['profile_id']}"):
             st.caption(f"Operador: {o['operator']} · Publicado: {'✓' if o['published'] else '✗'}")
-            st.markdown("**Briefing:**")
-            st.text(o["briefing"])
-            st.markdown("**Contenido:**")
+            st.text(f"Briefing: {o['briefing'][:100]}")
             st.markdown(o["content"])
