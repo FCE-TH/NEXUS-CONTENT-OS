@@ -13,6 +13,8 @@ class NexusState(TypedDict):
     profile_id: str
     operator: str
     generated_content: str | None
+    classification: dict | None
+    target_platforms: list | None
     human_approved: bool | None
     published: bool
     error: str | None
@@ -40,6 +42,24 @@ def generate_node(state: NexusState) -> NexusState:
     result = generate_content(briefing=state["briefing"], profile_context=profile_context)
     print(f"[GENERATE] Modelo: {result['model_used']} | Tarea: {result['task_type']} | Tokens: {result['output_tokens']}")
     state["generated_content"] = result["content"]
+    return state
+
+
+def classify_node(state: NexusState) -> NexusState:
+    """Clasifica el contenido y determina canales de distribución."""
+    from nexus.core.orchestrator.classifier import classify_content, route_to_platforms, format_classification_summary
+    
+    classification = classify_content(
+        content=state["generated_content"],
+        profile_id=state.get("profile_id", ""),
+        briefing=state.get("briefing", ""),
+    )
+    platforms = route_to_platforms(classification)
+    
+    print(f"[CLASSIFY] {format_classification_summary(classification)}")
+    
+    state["classification"] = classification
+    state["target_platforms"] = platforms
     return state
 
 
@@ -79,8 +99,11 @@ def build_graph() -> StateGraph:
     graph.add_node("distribute", distribute_node)
 
     graph.set_entry_point("intake")
+    graph.add_node("classify", classify_node)
+
     graph.add_edge("intake", "generate")
-    graph.add_edge("generate", "human_review")
+    graph.add_edge("generate", "classify")
+    graph.add_edge("classify", "human_review")
     graph.add_conditional_edges(
         "human_review",
         route_after_review,

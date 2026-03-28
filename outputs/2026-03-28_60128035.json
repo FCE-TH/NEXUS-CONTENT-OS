@@ -1,0 +1,10 @@
+{
+  "id": "60128035",
+  "timestamp": "2026-03-28T12:24:03.507846",
+  "profile_id": "squirrel_os",
+  "operator": "Felipe",
+  "briefing": "Escribe un post de LinkedIn sobre ADCP, el protocolo de trading agéntico de The Hook. Directo y ambicioso.",
+  "content": "# El próximo OpenRTB ya está aquí (y no es de Silicon Valley)\n\nLlevamos años viendo cómo la publicidad programática se movía a velocidad de RTB. Subastas en milisegundos. APIs que conectaban demanda y oferta. Un estándar abierto que definió una década.\n\nAhora The Hook ha hecho algo parecido, pero un nivel por encima.\n\n**ADCP es el protocolo de trading agéntico.** No es un DSP más. No es una plataforma más. Es el lenguaje en el que los agentes de IA van a negociar inventario, creatividad y audiencias sin intervención humana en el loop.\n\n¿Por qué importa?\n\n**Porque la asimetría es evidente:** Mientras los grandes operadores siguen optimizando campañas a través de interfaces humanas, los agentes autónomos ya pueden:\n- Detectar oportunidades de inventario en tiempo real\n- Ajustar creatividad según el contexto de la subasta\n- Negociar términos sin límite de velocidad\n- Aprender patrones que ningún humano alcanza\n\nEstamos en el momento que OpenRTB tuvo en 2010. **El primer mover no solo gana mercado. Define el mercado.**\n\nEn Squirrel OS ya estamos mapeando ADCP en nuestro stack. Porque sabemos que dentro de 18 meses, cualquier agencia que no hable este protocolo va a estar optimizando con herramientas del pasado.\n\n**La pregunta no es si los agentes van a trading automático.**\n\n**Es quién construye el sistema operativo en el que lo hacen.**\n\n---\n\n*Mientras debaten AI en publicidad, nosotros ya construimos los modelos de la siguiente década.*",
+  "approved": true,
+  "published": true
+}
