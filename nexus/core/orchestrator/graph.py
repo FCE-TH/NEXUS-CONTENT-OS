@@ -30,8 +30,14 @@ def generate_node(state: NexusState) -> NexusState:
     load_dotenv()
     from nexus.modules.content_intelligence.generator import generate_content
 
+    from nexus.core.profiles.manager import get_profile, profile_to_context
+    profile = get_profile(state.get("profile_id", ""))
+    profile_context = profile_to_context(profile) if profile else ""
+    if profile_context:
+        print(f"[GENERATE] Perfil cargado: {profile.get('name')}")
+
     print(f"[GENERATE] Briefing: {state['briefing'][:60]}...")
-    result = generate_content(briefing=state["briefing"])
+    result = generate_content(briefing=state["briefing"], profile_context=profile_context)
     print(f"[GENERATE] Modelo: {result['model_used']} | Tarea: {result['task_type']} | Tokens: {result['output_tokens']}")
     state["generated_content"] = result["content"]
     return state
