@@ -68,9 +68,30 @@ with st.sidebar:
                 st.caption("Sin marcas cliente — añade una en ⚙️ Marcas")
 
         operator = st.text_input("Operador", value="Felipe")
+        
+        # Selector de modelo/proveedor
+        from nexus.core.orchestrator.router import get_available_providers
+        available = get_available_providers()
+        providers_list = []
+        if available.get("groq"):
+            providers_list.append(("groq", "🚀 Groq Llama 3.1 (gratis)"))
+        if available.get("anthropic"):
+            providers_list.append(("claude", "⚡ Claude (económico)"))
+        
+        if providers_list:
+            provider_choice = st.radio(
+                "Modelo",
+                options=[p[0] for p in providers_list],
+                format_func=lambda x: next((p[1] for p in providers_list if p[0] == x), x),
+                horizontal=True,
+            )
+        else:
+            provider_choice = None
+            st.warning("⚠️ No hay APIs configuradas. Necesitas ANTHROPIC_API_KEY o GROQ_API_KEY")
+        
         briefing = st.text_area("Briefing", height=150,
             placeholder="Describe qué quieres generar, para quién y en qué tono...")
-        generate_btn = st.button("🚀 Generar", type="primary", use_container_width=True)
+        generate_btn = st.button("🚀 Generar", type="primary", use_container_width=True) if provider_choice else False
     else:
         generate_btn = False
         briefing = ""
