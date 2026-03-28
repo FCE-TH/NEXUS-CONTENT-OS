@@ -87,6 +87,40 @@ if "last_result" in st.session_state:
                 with col_b:
                     st.caption(f"{len(content)} caracteres")
 
+    # Programación de publicaciones
+    st.divider()
+    with st.expander("🗓️ Programar publicación"):
+        from nexus.core.scheduler.scheduler import schedule_post, next_optimal_slot, OPTIMAL_WINDOWS
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        tz = ZoneInfo("Europe/Madrid")
+        sched_platform = st.selectbox("Plataforma", list(adapted.keys()) if adapted else ["linkedin"], key="sched_platform")
+        
+        next_slot = next_optimal_slot(sched_platform)
+        st.caption(f"⏰ Próximo slot óptimo: **{next_slot.strftime('%d/%m/%Y a las %H:%M')}**")
+
+        use_optimal = st.checkbox("Usar slot óptimo automático", value=True)
+        if not use_optimal:
+            custom_date = st.date_input("Fecha", value=next_slot.date())
+            custom_time = st.time_input("Hora", value=next_slot.time())
+
+        if st.button("📅 Programar", type="secondary"):
+            import uuid
+            content_to_schedule = adapted.get(sched_platform, r.get("generated_content", ""))
+            publish_at = next_slot if use_optimal else datetime(
+                custom_date.year, custom_date.month, custom_date.day,
+                custom_time.hour, custom_time.minute, tzinfo=tz
+            )
+            result_sched = schedule_post(
+                content=content_to_schedule,
+                platform=sched_platform,
+                profile_id=r.get("profile_id", ""),
+                output_id=str(uuid.uuid4())[:8],
+                publish_at=publish_at,
+            )
+            st.success(f"✓ Programado para {result_sched['publish_at_human']} — {result_sched['window_label']}")
+
     # Feedback de métricas
     st.divider()
     with st.expander("📊 Registrar métricas de rendimiento (cierra el bucle)"):
@@ -120,6 +154,19 @@ if "last_result" in st.session_state:
     if st.button("🗑️ Limpiar y nueva producción"):
         del st.session_state["last_result"]
         st.rerun()
+
+# ── COLA DE PUBLICACIONES ────────────────────────────────
+from nexus.core.scheduler.scheduler import get_pending_posts
+pending = get_pending_posts(10)
+if pending:
+    st.subheader(f"🗓️ Cola de publicaciones ({len(pending)} pendientes)")
+    for p in pending:
+        col_t, col_p, col_pr, col_c = st.columns([2, 2, 2, 1])
+        col_t.write(f"⏰ {p['publish_at_human']}")
+        col_p.write(f"📢 {p['platform'].upper()}")
+        col_pr.write(f"👤 {p['profile_id']}")
+        col_c.button("❌", key=f"cancel_{p['output_id']}_{p['platform']}")
+    st.divider()
 
 # ── HISTORIAL ─────────────────────────────────────────────
 st.subheader("Historial de producciones")
