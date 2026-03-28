@@ -28,7 +28,8 @@ def _call_groq(system: str, briefing: str, model: str = "llama-3.1-70b-versatile
     )
     return {
         "content": response.choices[0].message.content,
-        "tokens": getattr(response.usage, "total_tokens", 0),
+        "input_tokens": getattr(response.usage, "prompt_tokens", 0),
+        "output_tokens": getattr(response.usage, "completion_tokens", 0),
     }
 
 
@@ -42,7 +43,8 @@ def _call_anthropic(system: str, briefing: str, model: str = "claude-haiku-4-5")
     )
     return {
         "content": response.content[0].text,
-        "tokens": response.usage.input_tokens + response.usage.output_tokens,
+        "input_tokens": response.usage.input_tokens,
+        "output_tokens": response.usage.output_tokens,
     }
 
 
@@ -94,7 +96,7 @@ def generate_content(
 
     # Llamada al LLM según proveedor
     try:
-        if provider == "groq":
+        if provider == "groq" and groq_client:
             result = _call_groq(system, briefing)
             result["provider"] = "groq"
             result["model_used"] = "llama-3.1-70b"
@@ -107,7 +109,7 @@ def generate_content(
     except Exception as e:
         print(f"Error con {provider}: {e}. Intentando fallback...")
         if provider == "groq" and anthropic_client:
-            result = _call_anthropic(system, briefing)
+            result = _call_anthropic(system, briefing, "claude-haiku-4-5")
             result["provider"] = "anthropic (fallback de Groq)"
             result["model_used"] = "claude-haiku-4-5"
         else:
