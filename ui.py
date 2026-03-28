@@ -46,9 +46,27 @@ with st.sidebar:
     # Formulario de producción
     if st.session_state["active_workspace"]:
         ws = st.session_state["active_workspace"]
-        active_channels = ws.get("default_channels", ["linkedin", "x", "instagram"])
 
         st.header("Nueva producción")
+
+        # Selector de marca cliente (solo Agencia y Productora)
+        selected_brand = None
+        if ws["archetype"] in ("agencia", "productora"):
+            from nexus.core.workspace.client_brands import list_client_brands
+            brands = list_client_brands(ws["workspace_id"])
+            if brands:
+                brand_options = {"__ws__": f"— {ws['name']} (propio) —"}
+                brand_options.update({b["brand_id"]: b["name"] for b in brands})
+                selected_brand_id = st.selectbox(
+                    "Marca cliente",
+                    options=list(brand_options.keys()),
+                    format_func=lambda x: brand_options[x],
+                )
+                if selected_brand_id != "__ws__":
+                    selected_brand = next((b for b in brands if b["brand_id"] == selected_brand_id), None)
+            else:
+                st.caption("Sin marcas cliente — añade una en ⚙️ Marcas")
+
         operator = st.text_input("Operador", value="Felipe")
         briefing = st.text_area("Briefing", height=150,
             placeholder="Describe qué quieres generar, para quién y en qué tono...")
@@ -121,10 +139,12 @@ st.caption(f"{archetype.label}  ·  {', '.join(ws['default_channels'])}")
 
 # ── GENERACIÓN ────────────────────────────────────────────
 if generate_btn and briefing:
+    # Si hay marca cliente seleccionada, usar su ID como perfil
+    active_profile = selected_brand["brand_id"] if selected_brand else ws["workspace_id"]
     with st.spinner("Generando, clasificando y adaptando..."):
         result = nexus_graph.invoke({
             "briefing": briefing,
-            "profile_id": ws["workspace_id"],
+            "profile_id": active_profile,
             "operator": operator,
             "generated_content": None,
             "classification": None,
@@ -233,6 +253,41 @@ if "last_result" in st.session_state:
     if st.button("🗑️ Limpiar y nueva producción"):
         del st.session_state["last_result"]
         st.rerun()
+
+# ── MARCAS CLIENTE (Agencia / Productora) ────────────────
+if ws["archetype"] in ("agencia", "productora"):
+    from nexus.core.workspace.client_brands import list_client_brands, add_client_brand
+    with st.expander("⚙️ Marcas cliente"):
+        brands = list_client_brands(ws["workspace_id"])
+        if brands:
+            for b in brands:
+                st.write(f"**{b['name']}** · {b.get('sector','')} · {', '.join(b.get('channels',[]))}")
+        else:
+            st.info("No hay marcas cliente todavía.")
+
+        st.subheader("Añadir marca cliente")
+        with st.form("add_brand_form"):
+            b_name = st.text_input("Nombre de la marca")
+            b_id = st.text_input("ID único (slug)", placeholder="ej: marca-x")
+            b_sector = st.text_input("Sector", placeholder="Ej: Moda, Tech, Alimentación")
+            b_tone = st.text_area("Tono de comunicación")
+            b_audience = st.text_input("Audiencia objetivo")
+            b_channels = st.multiselect("Canales principales", ["linkedin","x","instagram","facebook","youtube","tiktok"], default=["instagram","linkedin"])
+            b_never = st.text_input("Nunca decir (separado por comas)")
+            if st.form_submit_button("➕ Añadir marca", type="primary"):
+                if b_name and b_id:
+                    add_client_brand(
+                        workspace_id=ws["workspace_id"],
+                        brand_id=b_id,
+                        name=b_name,
+                        sector=b_sector,
+                        tone=b_tone,
+                        target_audience=b_audience,
+                        channels=b_channels,
+                        never_say=[x.strip() for x in b_never.split(",") if x.strip()],
+                    )
+                    st.success(f"✓ Marca '{b_name}' añadida")
+                    st.rerun()
 
 # ── COLA DE PUBLICACIONES ────────────────────────────────
 from nexus.core.scheduler.scheduler import get_pending_posts
