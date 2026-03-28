@@ -26,9 +26,14 @@ def intake_node(state: NexusState) -> NexusState:
 
 def generate_node(state: NexusState) -> NexusState:
     """Capa 2: Genera contenido vía LLM (enrutamiento inteligente)."""
-    # TODO: Conectar con motor LLM multi-proveedor
-    print(f"[GENERATE] Generando contenido para: {state['briefing'][:50]}...")
-    state["generated_content"] = f"[PLACEHOLDER] Contenido generado para: {state['briefing']}"
+    from dotenv import load_dotenv
+    load_dotenv()
+    from nexus.modules.content_intelligence.generator import generate_content
+
+    print(f"[GENERATE] Briefing: {state['briefing'][:60]}...")
+    result = generate_content(briefing=state["briefing"])
+    print(f"[GENERATE] Modelo: {result['model_used']} | Tarea: {result['task_type']} | Tokens: {result['output_tokens']}")
+    state["generated_content"] = result["content"]
     return state
 
 
@@ -50,8 +55,11 @@ def route_after_review(state: NexusState) -> Literal["distribute", "end"]:
 
 def distribute_node(state: NexusState) -> NexusState:
     """Capa 5: Publica en los canales configurados para el perfil."""
+    from nexus.shared.storage import save_output
     print(f"[DISTRIBUTE] Publicando contenido aprobado...")
     state["published"] = True
+    pid = save_output(state)
+    print(f"[DISTRIBUTE] Output guardado → ID: {pid}")
     return state
 
 
