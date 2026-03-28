@@ -1,0 +1,10 @@
+{
+  "id": "efb9b741",
+  "timestamp": "2026-03-28T12:26:01.671323",
+  "profile_id": "squirrel_os",
+  "operator": "Felipe",
+  "briefing": "Post sobre RepHook, nuestra herramienta de monitorización GEO. Tono directo.",
+  "content": "# RepHook: El GEO que cierra el bucle\n\nLa mayoría de marcas invierte en visibilidad en buscadores sin saber dónde terminan sus menciones. Monitorean keywords en Google. Publican en redes. Invierten en contenido.\n\nY luego no saben qué está pasando realmente en los LLMs.\n\n**RepHook es nuestro sistema de monitorización GEO.** No es un tracker de mentions. Es otra cosa.\n\n## Qué ves (que otros no ven)\n\n- Dónde aparece tu marca en contextos LLM (ChatGPT, Claude, perplexity, modelos privados)\n- Qué dicen de ti sin controlarlo\n- Cuándo pierdes territorio contra competencia\n- Por qué un competidor ranquea mejor en contextos agenticos\n- Dónde está el ruido y dónde está la señal real\n\n## La ventaja real\n\nOpenRTB fue 2010. Cambió la publicidad programática porque cerró el bucle entre inversión y visibilidad medible. \n\nAhora pasa lo mismo con GEO.\n\nLas marcas están cigas. Los LLMs generan contenido sin benchmarks de visibilidad. Los proveedores de soluciones grandes ni lo tocan. \n\nNosotros construimos RepHook porque es donde va el dinero en marketing en 24-36 meses. Y porque alguien tenía que hacerlo primero.\n\n## Diferencia de criterio\n\nNo mide humo. Mide presencia real en sistemas que toman decisiones sobre tu marca sin que lo sepas.\n\nSi tu criterio en marketing es \"estar donde está el negocio\", aquí es donde está ahora.\n\n---\n\n**RepHook. GEO sin mediadores.**",
+  "approved": true,
+  "published": true
+}

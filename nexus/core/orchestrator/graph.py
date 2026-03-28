@@ -15,6 +15,7 @@ class NexusState(TypedDict):
     generated_content: str | None
     classification: dict | None
     target_platforms: list | None
+    adapted_content: dict | None
     human_approved: bool | None
     published: bool
     error: str | None
@@ -63,6 +64,23 @@ def classify_node(state: NexusState) -> NexusState:
     return state
 
 
+def adapt_node(state: NexusState) -> NexusState:
+    """Adapta el contenido para cada canal según el clasificador."""
+    from nexus.core.orchestrator.adapter import adapt_all_platforms
+    from nexus.core.profiles.manager import get_profile, profile_to_context
+
+    profile = get_profile(state.get("profile_id", ""))
+    profile_context = profile_to_context(profile) if profile else ""
+
+    adapted = adapt_all_platforms(
+        original_content=state["generated_content"],
+        classification=state["classification"],
+        profile_context=profile_context,
+    )
+    state["adapted_content"] = adapted
+    return state
+
+
 def human_review_node(state: NexusState) -> NexusState:
     """HITL: Checkpoint de aprobación humana antes de publicar."""
     print(f"[REVIEW] Esperando aprobación humana...")
@@ -100,10 +118,12 @@ def build_graph() -> StateGraph:
 
     graph.set_entry_point("intake")
     graph.add_node("classify", classify_node)
+    graph.add_node("adapt", adapt_node)
 
     graph.add_edge("intake", "generate")
     graph.add_edge("generate", "classify")
-    graph.add_edge("classify", "human_review")
+    graph.add_edge("classify", "adapt")
+    graph.add_edge("adapt", "human_review")
     graph.add_conditional_edges(
         "human_review",
         route_after_review,
