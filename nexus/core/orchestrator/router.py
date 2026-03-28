@@ -13,18 +13,20 @@ class TaskType(str, Enum):
     EXTRACTION = "extraction"              # Claude Haiku: extracción de metadatos, clasificación
 
 
-# Tabla de enrutamiento
+# Tabla de enrutamiento (optimizada para coste)
+# claude-haiku-4-5:  ~$0.25/M input  — tareas estándar y volumen
+# claude-sonnet-4-5: ~$3/M input     — solo tareas complejas
 ROUTING_TABLE: dict[TaskType, str] = {
-    TaskType.COPY_STANDARD:       "gpt-4o",
+    TaskType.COPY_STANDARD:        "gpt-4o",
     TaskType.COMPLEX_INSTRUCTIONS: "claude-sonnet-4-5",
-    TaskType.VOLUME:              "gpt-4o-mini",
-    TaskType.EXTRACTION:          "claude-haiku-3-5",
+    TaskType.VOLUME:               "gpt-4o-mini",
+    TaskType.EXTRACTION:           "claude-haiku-4-5",
 }
 
 # Fallback si solo hay API key de Anthropic
 ANTHROPIC_FALLBACK: dict[str, str] = {
-    "gpt-4o":      "claude-sonnet-4-5",
-    "gpt-4o-mini": "claude-haiku-3-5",
+    "gpt-4o":      "claude-haiku-4-5",    # haiku para copy estándar (antes sonnet)
+    "gpt-4o-mini": "claude-haiku-4-5",
 }
 
 
