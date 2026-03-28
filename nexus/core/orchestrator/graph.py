@@ -32,17 +32,44 @@ def generate_node(state: NexusState) -> NexusState:
     from dotenv import load_dotenv
     load_dotenv()
     from nexus.modules.content_intelligence.generator import generate_content
-
     from nexus.core.profiles.manager import get_profile, profile_to_context
+    from nexus.core.workspace.workspace import get_workspace, workspace_has_module
+    
+    # Obtener contexto del workspace
+    ws = get_workspace(state.get("profile_id", ""))
     profile = get_profile(state.get("profile_id", ""))
     profile_context = profile_to_context(profile) if profile else ""
+    
     if profile_context:
         print(f"[GENERATE] Perfil cargado: {profile.get('name')}")
 
     print(f"[GENERATE] Briefing: {state['briefing'][:60]}...")
+    
+    # Si el workspace tiene módulo sports y el briefing es sobre deportes, usar LiveScore
+    rag_context = ""
+    if ws and workspace_has_module(ws['workspace_id'], "sports_realtime"):
+        briefing_lower = state['briefing'].lower()
+        sports_keywords = ['partido', 'gol', 'madrid', 'barcelona', 'laliga', 'champions', 'resultado', 'baloncesto', 'tenis']
+        if any(k in briefing_lower for k in sports_keywords):
+            try:
+                from nexus.modules.sports.livescore import get_live_matches, get_laliga_matches
+                # Intentar partidos en vivo primero, fallback a LaLiga reciente
+                matches = get_live_matches() or get_laliga_matches()
+                if matches:
+                    # Convertir lista de dicts a texto legible para el LLM
+                    matches_text = "\n".join([
+                        f"• {m['home']} {m['score_home']}-{m['score_away']} {m['away']} ({m['league']})"
+                        for m in matches[:5]
+                    ])
+                    rag_context = f"## Últimos resultados/partidos en directo:\n{matches_text}"
+                    print(f"[GENERATE] ✓ Datos deportivos cargados via LiveScore ({len(matches)} partidos)")
+            except Exception as e:
+                print(f"[GENERATE] ⚠️ LiveScore no disponible: {e}")
+    
     result = generate_content(
         briefing=state["briefing"],
         profile_context=profile_context,
+        rag_context=rag_context,
         profile_id=state.get("profile_id", ""),
     )
     print(f"[GENERATE] Modelo: {result['model_used']} | Tarea: {result['task_type']} | Tokens: {result['output_tokens']}")
