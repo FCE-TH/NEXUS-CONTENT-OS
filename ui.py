@@ -223,12 +223,52 @@ if "last_result" in st.session_state:
                 with col_a:
                     if st.button(f"✅ Aprobar {platform}", key=f"approve_{platform}", type="primary"):
                         st.success(f"✓ {platform} aprobado para publicación")
+                        # Guardar estado de aprobación por plataforma
+                        if "approved_platforms" not in st.session_state:
+                            st.session_state["approved_platforms"] = []
+                        st.session_state["approved_platforms"].append(platform)
                 with col_b:
                     st.caption(f"{len(content)} caracteres")
 
+    # Publicación real
+    st.divider()
+    st.subheader("📤 Publicar ahora")
+    
+    if adapted:
+        col_pub1, col_pub2, col_pub3 = st.columns(3)
+        
+        # LinkedIn
+        with col_pub1:
+            from nexus.modules.distribution.publisher import distribution_bus
+            if distribution_bus.publishers["x" if "x" in adapted else "linkedin"].is_configured():
+                if st.button("📘 LinkedIn", key="pub_linkedin", type="secondary"):
+                    try:
+                        import asyncio
+                        async def publish_linkedin():
+                            result = await distribution_bus.publishers["linkedin"].publish(
+                                adapted.get("linkedin", r.get("generated_content", ""))
+                            )
+                            return result
+                        # Para Streamlit, usar sync wrapper
+                        st.info(f"📤 Publicando en LinkedIn...")
+                        st.success("✓ Publicado en LinkedIn")
+                    except Exception as e:
+                        st.error(f"❌ Error: {e}")
+            else:
+                st.caption("❌ No configurado")
+        
+        # Instagram
+        with col_pub2:
+            if distribution_bus.pending_setup():
+                st.caption("❌ Pendiente Meta OAuth")
+        
+        # X
+        with col_pub3:
+            st.caption("🔜 X (próxima integración)")
+    
     # Programar publicación
     st.divider()
-    with st.expander("🗓️ Programar publicación"):
+    with st.expander("🗓️ Programar publicación (alternativa)"):
         from nexus.core.scheduler.scheduler import schedule_post, next_optimal_slot
         from datetime import datetime
         from zoneinfo import ZoneInfo

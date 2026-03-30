@@ -57,7 +57,13 @@ class LinkedInPublisher(BasePublisher):
             return PublishResult(Platform.LINKEDIN, False, error="Credenciales no configuradas")
 
         token = os.getenv("LINKEDIN_ACCESS_TOKEN")
-        person_id = os.getenv("LINKEDIN_PERSON_ID")
+        
+        # Obtener person_id del token (lazy loading)
+        person_id = os.getenv("LINKEDIN_PERSON_ID", "")
+        if not person_id:
+            person_id = await self._get_person_id_from_token(token)
+            if not person_id:
+                return PublishResult(Platform.LINKEDIN, False, error="No se pudo obtener person_id")
 
         payload = {
             "author": f"urn:li:person:{person_id}",
@@ -80,6 +86,7 @@ class LinkedInPublisher(BasePublisher):
                     "Content-Type": "application/json",
                     "X-Restli-Protocol-Version": "2.0.0",
                 },
+                timeout=10,
             )
 
         if resp.status_code == 201:
@@ -87,6 +94,22 @@ class LinkedInPublisher(BasePublisher):
             return PublishResult(Platform.LINKEDIN, True, post_id=post_id,
                                  url=f"https://www.linkedin.com/feed/update/{post_id}")
         return PublishResult(Platform.LINKEDIN, False, error=resp.text)
+    
+    async def _get_person_id_from_token(self, token: str) -> str | None:
+        """Obtiene person_id usando el access token (requiere scope openid profile)."""
+        try:
+            async with httpx.AsyncClient() as client:
+                # Intentar con /id endpoint que no requiere permisos especiales
+                resp = await client.get(
+                    "https://api.linkedin.com/v2/me",
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=5,
+                )
+                if resp.status_code == 200:
+                    return resp.json().get("id", "")
+        except Exception:
+            pass
+        return None
 
 
 # ── INSTAGRAM / FACEBOOK ──────────────────────────────────

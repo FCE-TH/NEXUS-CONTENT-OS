@@ -32,7 +32,7 @@ app.add_middleware(
 )
 
 # Incluir routers
-app.include_router(oauth_router)
+app.include_router(oauth_router, prefix="/api")
 
 
 # ── MODELOS ───────────────────────────────────────────────

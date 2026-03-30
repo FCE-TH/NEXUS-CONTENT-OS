@@ -14,7 +14,7 @@ LINKEDIN_TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken"
 
 CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID", "")
 CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET", "")
-REDIRECT_URI = "http://localhost:8501/api/oauth/callback"  # Cambia a prod URL si es necesario
+REDIRECT_URI = "http://161.35.157.215:8000/api/oauth/callback"  # Callback a FastAPI
 
 
 @router.get("/oauth/linkedin/authorize")
@@ -64,27 +64,15 @@ async def oauth_callback(code: str = Query(None), error: str = Query(None)):
         access_token = token_data.get("access_token")
         expires_in = token_data.get("expires_in", 5184000)  # 60 days default
 
-        # Obtener LinkedIn person ID para poder publicar
-        async with httpx.AsyncClient() as client:
-            profile_response = await client.get(
-                "https://api.linkedin.com/v2/me",
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-
-        if profile_response.status_code == 200:
-            profile_data = profile_response.json()
-            person_id = profile_data.get("id", "")
-            
-            # Guardar en .env (en producción, usar database)
-            _save_linkedin_token(access_token, person_id, expires_in)
-            
-            return {
-                "success": True,
-                "message": f"LinkedIn authorized! Token saved. (Expires in {expires_in} seconds)",
-                "person_id": person_id,
-            }
-        else:
-            return {"error": f"Failed to get LinkedIn profile: {profile_response.text}"}
+        # Guardar solo el access token por ahora
+        # El person_id se obtiene cuando publiquemos (lazy loading)
+        _save_linkedin_token(access_token, "", expires_in)
+        
+        return {
+            "success": True,
+            "message": f"✓ LinkedIn autorizado! Token guardado.",
+            "note": "Token guardado. Se usará al publicar.",
+        }
 
     except Exception as e:
         return {"error": f"OAuth error: {str(e)}"}
