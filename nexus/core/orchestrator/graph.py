@@ -47,36 +47,51 @@ def generate_node(state: NexusState) -> NexusState:
     
     # Si el workspace tiene módulo sports y el briefing es sobre deportes, usar LiveScore
     rag_context = ""
-    briefing_lower = state['briefing'].lower()
-    sports_keywords = ['partido', 'gol', 'madrid', 'barcelona', 'laliga', 'champions', 'resultado', 'baloncesto', 'tenis', 'real', 'atletico']
     
     if ws:
         print(f"[GENERATE] Workspace: {ws.get('name')} | Módulos: {ws.get('active_modules')}")
         if workspace_has_module(ws['workspace_id'], "sports_realtime"):
             print(f"[GENERATE] ✓ Sports realtime activo")
-            if any(k in briefing_lower for k in sports_keywords):
-                print(f"[GENERATE] Detectada tarea deportiva (keywords encontradas)")
-                try:
-                    from nexus.modules.sports.livescore import get_live_matches, get_laliga_matches
+            try:
+                from nexus.modules.sports.team_extractor import extract_team_and_league, format_extraction_for_livescore
+                from nexus.modules.sports.livescore import get_live_matches, get_laliga_matches
+                
+                # Extraer equipo/liga del briefing
+                extraction = extract_team_and_league(state['briefing'])
+                print(f"[GENERATE] Extracción: {extraction}")
+                
+                if extraction.get('confidence', 0) > 0.2:
+                    print(f"[GENERATE] Detectada tarea deportiva (team: {extraction.get('team')}, league: {extraction.get('league')})")
                     print(f"[GENERATE] Intentando LiveScore...")
-                    # Intentar partidos en vivo primero, fallback a LaLiga reciente
-                    matches = get_live_matches() or get_laliga_matches()
-                    if matches:
-                        # Convertir lista de dicts a texto legible para el LLM
-                        matches_text = "\n".join([
-                            f"• {m['home']} {m['score_home']}-{m['score_away']} {m['away']} ({m['league']})"
-                            for m in matches[:5]
-                        ])
-                        rag_context = f"## Últimos resultados/partidos en directo:\n{matches_text}"
-                        print(f"[GENERATE] ✓ Datos deportivos cargados via LiveScore ({len(matches)} partidos)")
-                    else:
-                        print(f"[GENERATE] ⚠️ LiveScore no retornó partidos")
-                except Exception as e:
-                    print(f"[GENERATE] ⚠️ LiveScore error: {e}")
-                    import traceback
-                    traceback.print_exc()
-            else:
-                print(f"[GENERATE] Briefing no tiene palabras clave deportivas")
+                    
+                    # Obtener partidos para la liga detectada
+                    try:
+                        matches = get_laliga_matches()  # Por ahora siempre LaLiga, mejora futura: usar extraction['league']
+                        if matches:
+                            # Filtrar por equipo si se especificó
+                            if extraction.get('team'):
+                                team_matches = [m for m in matches if extraction['team'].lower() in m['home'].lower() or extraction['team'].lower() in m['away'].lower()]
+                                if team_matches:
+                                    matches = team_matches
+                                    print(f"[GENERATE] ✓ Filtrado a {extraction['team']}: {len(matches)} partidos")
+                                else:
+                                    print(f"[GENERATE] ⚠️ No hay partidos del equipo, usando todos de la liga")
+                            
+                            # Convertir a texto legible
+                            matches_text = "\n".join([
+                                f"• {m['home']} {m['score_home']}-{m['score_away']} {m['away']} ({m['league']})"
+                                for m in matches[:5]
+                            ])
+                            rag_context = f"## Últimos resultados/partidos {extraction.get('league', 'disponibles')}:\n{matches_text}"
+                            print(f"[GENERATE] ✓ Datos deportivos cargados ({len(matches)} partidos relevantes)")
+                    except Exception as e:
+                        print(f"[GENERATE] ⚠️ LiveScore fetch error: {e}")
+                else:
+                    print(f"[GENERATE] Briefing no detectado como tarea deportiva (confidence: {extraction.get('confidence')})")
+            except Exception as e:
+                print(f"[GENERATE] ⚠️ Sports error: {e}")
+                import traceback
+                traceback.print_exc()
         else:
             print(f"[GENERATE] Sports realtime NO activo para este workspace")
     else:
