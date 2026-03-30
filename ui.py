@@ -21,6 +21,19 @@ if "active_workspace" not in st.session_state:
 
 workspaces = list_workspaces()
 
+# ── SETTINGS GLOBALES ────────────────────────────────────
+with st.sidebar:
+    with st.expander("⚙️ Integraciones"):
+        st.subheader("LinkedIn OAuth")
+        if not st.session_state.get("linkedin_authorized"):
+            if st.button("🔗 Autorizar LinkedIn"):
+                # Redirigir a OAuth endpoint
+                oauth_url = "http://localhost:8000/api/oauth/linkedin/authorize"
+                st.write(f"[Abre este link en una nueva pestaña]({oauth_url})")
+                st.info("Se abrirá LinkedIn. Aprueba el acceso y serás redirigido.")
+        else:
+            st.success("✓ LinkedIn autorizado")
+
 # ── SIDEBAR ──────────────────────────────────────────────
 with st.sidebar:
     st.title("⚡ NEXUS")

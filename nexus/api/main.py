@@ -16,6 +16,7 @@ from typing import Optional
 from nexus.core.orchestrator.graph import nexus_graph, NexusState
 from nexus.core.profiles.manager import save_profile, get_profile, profile_to_context
 from nexus.shared.storage import list_outputs, save_output
+from nexus.api.oauth import router as oauth_router
 
 app = FastAPI(
     title="NEXUS Content OS API",
@@ -29,6 +30,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Incluir routers
+app.include_router(oauth_router)
 
 
 # ── MODELOS ───────────────────────────────────────────────
